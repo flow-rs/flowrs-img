@@ -1,0 +1,26 @@
+[package]
+name = "flowrs-img"
+version = "0.1.0"
+edition = "2021"
+authors = ["wuermseer.florian@gmail.com", "markus.friedrich@hm.edu"]
+description = "An image library flowrs library."
+repository = "https://github.com/flow-rs/flowrs-img"
+license = "Apache-2.0"
+license-file = "LICENSE"
+readme = "README.md"
+documentation = "https://docs.rs/flowrs-img"
+keywords = ["flow", "fbp", "wasm", "img"]
+categories = ["data-structures", "wasm"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1.0.72"
+flowrs = {path = "../flowrs"}  # "0.1.0"
+serde = "1.0.183"
+image = "0.24.7"
+ndarray = "0.15.6"
+nshare = "0.9.0"
+wasm-bindgen = "0.2.87"

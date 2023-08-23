@@ -1,2 +1,11 @@
-# img
-Nodes for image loading and conversion.
+# Executing Tests
+
+All Rust internal test can be executed using:
+
+```sh
+$ cargo test
+```
+
+# Contributing
+
+Please read our [Contribution Guidelines](./CONTRIBUTING.md) first.
