@@ -56,11 +56,11 @@ impl Node for WebcamNode
             Some(cam) => {
                 let r_frame = cam.frame();
                 match r_frame {
-                    Err(err) => Err(UpdateError::Other(err)),
+                    Err(err) => UpdateError::Other(err),
                     Ok(frame) => {
                         let r_decode = frame.decode_image::<RgbFormat>();
                         match r_decode {
-                            Err(err) => Err(UpdateError::Other(err)),
+                            Err(err) => UpdateError::Other(err),
                             Ok(decoded) => {
                                 let dyn_img = DynamicImage::ImageRgb8(decoded);
                                 self.output.clone().send(dyn_img).map_err(|e| UpdateError::Other(e.into()))?;
