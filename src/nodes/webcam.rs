@@ -35,9 +35,14 @@ impl Node for WebcamNode
         
         match camera {
             Ok(cam) => {
-                self.camera = Some(cam);
-                let _ = cam.frame();
-                Ok(())
+                let testFrame = cam.frame();
+                match testFrame {
+                    Err(err) => ReadyError::Other(err),
+                    Ok(_) => {
+                        self.camera = Some(cam);
+                        Ok(())
+                    }
+                }
             },
             Err(err) => ReadyError::Other(err)
         }
