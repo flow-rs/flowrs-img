@@ -2,7 +2,7 @@ use core::result::Result::Ok;
 use flowrs::RuntimeConnectable;
 use flowrs::{
     connection::Output,
-    node::{ChangeObserver, Node, ReadyError, SendError, UpdateError},
+    node::{ChangeObserver, Node, UpdateError},
 };
 use image::DynamicImage;
 use nokhwa::{
@@ -10,7 +10,6 @@ use nokhwa::{
     utils::{CameraIndex, RequestedFormat, RequestedFormatType},
     Camera,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode {
@@ -25,38 +24,49 @@ impl WebcamNode {
             camera: None,
             output: Output::new(change_observer),
         }
-    }
-}
-
-impl Node for WebcamNode {
-    fn on_ready(&self) -> Result<(), ReadyError> {
+    } 
+    
+    fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let index = CameraIndex::Index(0);
         let requested =
             RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
         let camera = Camera::new(index, requested);
 
+
         match camera {
             Ok(mut cam) => {
                 let test_frame = cam.frame();
                 match test_frame {
-                    Err(err) => Err(ReadyError::Other(err.into())),
+                    Err(err) => Err(UpdateError::Other(err.into())),
                     Ok(_) => {
-                        self.camera = Some(cam); // Wrap Camera in Arc<Mutex>
+                        self.camera = Some(cam);
                         Ok(())
                     }
                 }
             }
-            Err(err) => Err(ReadyError::Other(err.into())),
+            Err(err) => Err(UpdateError::Other(err.into())),
         }
     }
+}
+
+impl Node for WebcamNode {
+   
 
     fn on_update(&mut self) -> Result<(), UpdateError> {
         let no_cam_err = "No camera available";
-        match &self.camera {
-            None => Err(UpdateError::SendError {
+        
+        match self.camera {
+            None =>  {
+                self.init_webcam()?
+            }
+            _ => {}
+        }
+
+        match self.camera {
+            None => Err(UpdateError::SendError { // sould not be reachable
                 message: no_cam_err.to_string(),
             }),
-            Some(mut cam) => {
+            Some(ref mut cam) => {
                 let r_frame = cam.frame();
                 match r_frame {
                     Err(err) => Err(UpdateError::Other(err.into())),
