@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod nodes {
     use flowrs::connection::{connect, Edge};
-    use flowrs::node::{Node, ChangeObserver, ReceiveError};
+    use flowrs::node::{ChangeObserver, Node, ReceiveError};
     use flowrs_img::webcam::WebcamNode;
-
 
     #[test]
     fn should_return_some_frame() -> Result<(), ReceiveError> {
-        let change_observer: ChangeObserver = ChangeObserver::new(); 
+        let change_observer: ChangeObserver = ChangeObserver::new();
         let mut webcam = WebcamNode::new(Some(&change_observer));
 
         let mock_output = Edge::new();
