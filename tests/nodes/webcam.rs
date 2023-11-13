@@ -3,8 +3,10 @@ mod nodes {
     use flowrs::connection::{connect, Edge};
     use flowrs::node::{ChangeObserver, Node, ReceiveError};
     use flowrs_img::webcam::WebcamNode;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn should_return_some_frame() -> Result<(), ReceiveError> {
         let change_observer: ChangeObserver = ChangeObserver::new();
         let mut webcam = WebcamNode::new(Some(&change_observer));

@@ -11,8 +11,10 @@ mod flow {
     use flowrs_std::debug::DebugNode;
     use image::DynamicImage;
     use ndarray::Array3;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn transport_of_image_to_array() -> Result<(), anyhow::Error> {
         println!("Webcam_on_update_test:");
 

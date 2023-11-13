@@ -25,6 +25,7 @@ image = "0.24.7"
 ndarray = "0.15.6"
 nshare = "0.9.0"
 wasm-bindgen = "0.2.87"
+serial_test = "2.0.0"
 
 [dependencies.nokhwa]
 version = "0.10.4"
