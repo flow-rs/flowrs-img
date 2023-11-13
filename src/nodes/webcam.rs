@@ -24,17 +24,16 @@ impl WebcamNode {
             camera: None,
             output: Output::new(change_observer),
         }
-    } 
-    
+    }
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let index = CameraIndex::Index(0);
         let requested =
             RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
         let camera = Camera::new(index, requested);
 
-
         match camera {
             Ok(mut cam) => {
+                let _ = cam.open_stream();
                 let test_frame = cam.frame();
                 match test_frame {
                     Err(err) => Err(UpdateError::Other(err.into())),
@@ -50,20 +49,16 @@ impl WebcamNode {
 }
 
 impl Node for WebcamNode {
-   
-
     fn on_update(&mut self) -> Result<(), UpdateError> {
         let no_cam_err = "No camera available";
-        
+
         match self.camera {
-            None =>  {
-                self.init_webcam()?
-            }
+            None => self.init_webcam()?,
             _ => {}
         }
 
         match self.camera {
-            None => Err(UpdateError::SendError { // sould not be reachable
+            None => Err(UpdateError::SendError {
                 message: no_cam_err.to_string(),
             }),
             Some(ref mut cam) => {
