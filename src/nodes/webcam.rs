@@ -4,8 +4,10 @@ use flowrs::{
     connection::Output,
     node::{ChangeObserver, Node, UpdateError},
 };
+use futures_executor::block_on;
 use image::DynamicImage;
 use nokhwa::{
+    js_camera::{JSCamera, JSCameraConstraintsBuilder},
     pixel_format::RgbFormat,
     utils::{CameraIndex, RequestedFormat, RequestedFormatType},
     Camera,
@@ -13,7 +15,10 @@ use nokhwa::{
 
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode {
+    #[cfg(not(target_arch = "wasm32"))]
     camera: Option<Camera>,
+    #[cfg(target_arch = "wasm32")]
+    camera: Option<JSCamera>,
     #[output]
     pub output: Output<DynamicImage>,
 }
@@ -25,6 +30,7 @@ impl WebcamNode {
             output: Output::new(change_observer),
         }
     }
+    #[cfg(not(target_arch = "wasm32"))]
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let index = CameraIndex::Index(0);
         let requested =
@@ -34,6 +40,24 @@ impl WebcamNode {
         match camera {
             Ok(mut cam) => {
                 let _ = cam.open_stream();
+                let test_frame = cam.frame();
+                match test_frame {
+                    Err(err) => Err(UpdateError::Other(err.into())),
+                    Ok(_) => {
+                        self.camera = Some(cam);
+                        Ok(())
+                    }
+                }
+            }
+            Err(err) => Err(UpdateError::Other(err.into())),
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
+        let camera_contraints = JSCameraConstraintsBuilder::new().build();
+        let camera = block_on(JSCamera::new(camera_contraints));
+        match camera {
+            Ok(mut cam) => {
                 let test_frame = cam.frame();
                 match test_frame {
                     Err(err) => Err(UpdateError::Other(err.into())),
@@ -66,7 +90,10 @@ impl Node for WebcamNode {
                 match r_frame {
                     Err(err) => Err(UpdateError::Other(err.into())),
                     Ok(frame) => {
+                        #[cfg(not(target_arch = "wasm32"))]
                         let r_decode = frame.decode_image::<RgbFormat>();
+                        #[cfg(target_arch = "wasm32")]
+                        let r_decode = frame;
                         match r_decode {
                             Err(err) => Err(UpdateError::Other(err.into())),
                             Ok(decoded) => {
