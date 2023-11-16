@@ -55,7 +55,7 @@ impl WebcamNode {
     #[cfg(target_arch = "wasm32")]
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let camera_contraints = JSCameraConstraintsBuilder::new().build();
-        let camera = block_on(JSCamera::new(camera_contraints));
+        let camera = block_on(async move {JSCamera::new(camera_contraints).await});
         match camera {
             Ok(mut cam) => {
                 let test_frame = cam.frame();
