@@ -81,33 +81,32 @@ impl Node for WebcamNode {
             _ => {}
         }
 
-        match self.camera {
-            None => Err(UpdateError::SendError {
+        let cam = match self.camera {
+            Some(ref mut camera) => camera,
+            None => return Err(UpdateError::SendError {
                 message: no_cam_err.to_string(),
             }),
-            Some(ref mut cam) => {
-                let r_frame = cam.frame();
-                match r_frame {
-                    Err(err) => Err(UpdateError::Other(err.into())),
-                    Ok(frame) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let r_decode = frame.decode_image::<RgbFormat>();
-                        #[cfg(target_arch = "wasm32")]
-                        let r_decode = frame;
-                        match r_decode {
-                            Err(err) => Err(UpdateError::Other(err.into())),
-                            Ok(decoded) => {
-                                let dyn_img = DynamicImage::ImageRgb8(decoded);
-                                self.output
-                                    .clone()
-                                    .send(dyn_img)
-                                    .map_err(|e| UpdateError::Other(e.into()))?;
-                                Ok(())
-                            }
-                        }
-                    }
-                }
-            }
+        };
+
+        let frame_buffer = match cam.frame() {
+            Ok(frame) => frame,
+            Err(err) => return Err(UpdateError::Other(err.into())),
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let decoded_frame = match frame_buffer.decode_image::<RgbFormat>() {
+            Ok(frame) => frame,
+            Err(err) => return Err(UpdateError::Other(err.into())),
+        };
+
+        #[cfg(target_arch = "wasm32")]
+        let decoded_frame = frame_buffer;
+
+        let dyn_img = DynamicImage::ImageRgb8(decoded_frame);
+
+        match self.output.clone().send(dyn_img) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(UpdateError::Other(err.into())),
         }
     }
 }
