@@ -1,4 +1,9 @@
-use core::result::Result::Ok;
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
+
+static NTHREADS: i32 = 2;
+
 use flowrs::RuntimeConnectable;
 use flowrs::{
     connection::Output,
@@ -12,6 +17,15 @@ use nokhwa::{
     utils::{CameraIndex, RequestedFormat, RequestedFormatType},
     Camera,
 };
+use std::thread::spawn;
+use wasm_bindgen_futures::spawn_local;
+
+fn debug_info(inp: &str) {
+    #[cfg(target_arch = "wasm32")]
+    crate::log(inp);
+    #[cfg(not(target_arch = "wasm32"))]
+    println!("{}", inp)
+}
 
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode {
@@ -52,11 +66,26 @@ impl WebcamNode {
             Err(err) => Err(UpdateError::Other(err.into())),
         }
     }
-    #[cfg(target_arch = "wasm32")]
+    //#[cfg(target_arch = "wasm32")]
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let camera_contraints = JSCameraConstraintsBuilder::new().build();
-        let camera = block_on(async move {JSCamera::new(camera_contraints).await});
-        match camera {
+        // let camera = block_on(async move {JSCamera::new(camera_contraints).await});
+        let mut cam_new: Option<JSCamera> = None;
+
+        let (tx, rx): (Sender<JSCamera>, Receiver<JSCamera>) = mpsc::channel();
+        let mut children = Vec::new();
+
+        spawn_local(async move {
+            debug_info("In async");
+            let cam = JSCamera::new(camera_contraints).await;
+            debug_info("After new");
+            cam_new = Some(cam.unwrap());
+            debug_info("Saved to cam_new");
+        });
+        self.camera = cam_new;
+        debug_info("Out of async");
+        Ok(())
+        /*match camera {
             Ok(mut cam) => {
                 let test_frame = cam.frame();
                 match test_frame {
@@ -68,13 +97,14 @@ impl WebcamNode {
                 }
             }
             Err(err) => Err(UpdateError::Other(err.into())),
-        }
+        }*/
     }
 }
 
 impl Node for WebcamNode {
     fn on_update(&mut self) -> Result<(), UpdateError> {
         let no_cam_err = "No camera available";
+        debug_info("updating...");
 
         match self.camera {
             None => self.init_webcam()?,
@@ -83,9 +113,11 @@ impl Node for WebcamNode {
 
         let cam = match self.camera {
             Some(ref mut camera) => camera,
-            None => return Err(UpdateError::SendError {
-                message: no_cam_err.to_string(),
-            }),
+            None => {
+                return Err(UpdateError::SendError {
+                    message: no_cam_err.to_string(),
+                })
+            }
         };
 
         let frame_buffer = match cam.frame() {
