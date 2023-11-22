@@ -66,23 +66,23 @@ impl WebcamNode {
             Err(err) => Err(UpdateError::Other(err.into())),
         }
     }
-    //#[cfg(target_arch = "wasm32")]
+    #[cfg(target_arch = "wasm32")]
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
+        use nokhwa::NokhwaError;
+
         let camera_contraints = JSCameraConstraintsBuilder::new().build();
         // let camera = block_on(async move {JSCamera::new(camera_contraints).await});
         let mut cam_new: Option<JSCamera> = None;
 
-        let (tx, rx): (Sender<JSCamera>, Receiver<JSCamera>) = mpsc::channel();
-        let mut children = Vec::new();
-
         spawn_local(async move {
             debug_info("In async");
-            let cam = JSCamera::new(camera_contraints).await;
+            cam_new = JSCamera::new(camera_contraints).await.ok();
             debug_info("After new");
-            cam_new = Some(cam.unwrap());
+            //cam_new = Some(cam.unwrap());
             debug_info("Saved to cam_new");
         });
-        self.camera = cam_new;
+
+        self.camera = Some(cam_new.unwrap());
         debug_info("Out of async");
         Ok(())
         /*match camera {

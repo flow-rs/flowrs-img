@@ -32,3 +32,6 @@ wasm-bindgen-futures = "0.4.26"
 [dependencies.nokhwa]
 version = "0.10.4"
 features = ["input-jscam","input-native","output-threaded"]
+
+[build]
+target = "wasm32-unknown-unknown"
