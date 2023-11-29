@@ -68,36 +68,41 @@ impl WebcamNode {
     }
     #[cfg(target_arch = "wasm32")]
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
-        use nokhwa::NokhwaError;
+        use std::sync::mpsc::TryRecvError;
 
         let camera_contraints = JSCameraConstraintsBuilder::new().build();
-        // let camera = block_on(async move {JSCamera::new(camera_contraints).await});
         let mut cam_new: Option<JSCamera> = None;
+
+        let (tx, rx) = mpsc::channel();
+        let mut children = Vec::new();
 
         spawn_local(async move {
             debug_info("In async");
-            cam_new = JSCamera::new(camera_contraints).await.ok();
+            let cam = JSCamera::new(camera_contraints).await;
+            tx.send(cam);
             debug_info("After new");
-            //cam_new = Some(cam.unwrap());
-            debug_info("Saved to cam_new");
         });
 
-        self.camera = Some(cam_new.unwrap());
-        debug_info("Out of async");
-        Ok(())
-        /*match camera {
-            Ok(mut cam) => {
-                let test_frame = cam.frame();
-                match test_frame {
-                    Err(err) => Err(UpdateError::Other(err.into())),
-                    Ok(_) => {
-                        self.camera = Some(cam);
-                        Ok(())
-                    }
+        debug_info("Waiting for camera");
+        loop {
+            match rx.try_recv() {
+                Ok(cam_res) => {
+                    self.camera = Some(cam_res.map_err(|e| UpdateError::Other(e.into()))?);
+                    break;
                 }
+                Err(TryRecvError::Empty) => {
+                    continue;
+                }
+                Err(TryRecvError::Disconnected) => unreachable!(),
             }
+        }
+
+        debug_info("Out of async");
+
+        match self.camera.unwrap().frame() {
+            Ok(_) => Ok(()),
             Err(err) => Err(UpdateError::Other(err.into())),
-        }*/
+        }
     }
 }
 
@@ -108,7 +113,7 @@ impl Node for WebcamNode {
 
         match self.camera {
             None => self.init_webcam()?,
-            _ => {}
+            Some(_) => todo!(),
         }
 
         let cam = match self.camera {
