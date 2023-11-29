@@ -10,6 +10,7 @@ use nokhwa::{
     utils::{CameraIndex, RequestedFormat, RequestedFormatType},
     Camera,
 };
+
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode {
     camera: Option<Camera>,
@@ -24,27 +25,27 @@ impl WebcamNode {
             output: Output::new(change_observer),
         }
     }
-    
+
     fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
         let index = CameraIndex::Index(0);
         let requested =
             RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
-        let camera = Camera::new(index, requested);
+        let new_camera = Camera::new(index, requested);
 
-        match camera {
-            Ok(mut cam) => {
-                let _ = cam.open_stream();
-                let test_frame = cam.frame();
-                match test_frame {
-                    Err(err) => Err(UpdateError::Other(err.into())),
-                    Ok(_) => {
-                        self.camera = Some(cam);
-                        Ok(())
-                    }
-                }
-            }
-            Err(err) => Err(UpdateError::Other(err.into())),
+        let mut camera = match new_camera {
+            Ok(camera) => camera,
+            Err(err) => return Err(UpdateError::Other(err.into())),
+        };
+
+        let _ = camera.open_stream();
+        let test_frame = camera.frame();
+
+        if let Err(err) = test_frame {
+            return Err(UpdateError::Other(err.into()));
         }
+
+        self.camera = Some(camera);
+        Ok(())
     }
 }
 
