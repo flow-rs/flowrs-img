@@ -1,7 +1,7 @@
 use flowrs::RuntimeConnectable;
 use flowrs::{
     connection::Output,
-    node::{ChangeObserver, Node, UpdateError},
+    node::{Node, ChangeObserver, InitError, UpdateError},
 };
 
 use image::DynamicImage;
@@ -25,8 +25,10 @@ impl WebcamNode {
             output: Output::new(change_observer),
         }
     }
+}
 
-    fn init_webcam(&mut self) -> anyhow::Result<(), UpdateError> {
+impl Node for WebcamNode {
+    fn on_init(&mut self) -> Result<(), InitError> {
         let index = CameraIndex::Index(0);
         let requested =
             RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
@@ -34,29 +36,22 @@ impl WebcamNode {
 
         let mut camera = match new_camera {
             Ok(camera) => camera,
-            Err(err) => return Err(UpdateError::Other(err.into())),
+            Err(err) => return Err(InitError::Other(err.into())),
         };
 
         let _ = camera.open_stream();
         let test_frame = camera.frame();
 
         if let Err(err) = test_frame {
-            return Err(UpdateError::Other(err.into()));
+            return Err(InitError::Other(err.into()));
         }
 
         self.camera = Some(camera);
         Ok(())
     }
-}
-
-impl Node for WebcamNode {
+    
     fn on_update(&mut self) -> Result<(), UpdateError> {
         let no_cam_err = "No camera available";
-
-        match self.camera {
-            None => self.init_webcam()?,
-            Some(_) => todo!(),
-        }
 
         let cam = match self.camera {
             Some(ref mut camera) => camera,

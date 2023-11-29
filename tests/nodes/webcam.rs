@@ -13,7 +13,16 @@ mod nodes {
 
         let mock_output = Edge::new();
         connect(webcam.output.clone(), mock_output.clone());
-        let _ = webcam.on_update();
+        
+        let init_retsult = webcam.on_init();
+        if let Err(err) = init_retsult {
+            return Err(ReceiveError::Other(err.into()));
+        }
+
+        let update_retsult = webcam.on_update();
+        if let Err(err) = update_retsult {
+            return Err(ReceiveError::Other(err.into()));
+        }
 
         let actual_image = mock_output.next();
         match actual_image {
