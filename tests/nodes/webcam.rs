@@ -13,7 +13,7 @@ mod nodes {
 
         let mock_output = Edge::new();
         connect(webcam.output.clone(), mock_output.clone());
-        
+
         let init_retsult = webcam.on_init();
         if let Err(err) = init_retsult {
             return Err(ReceiveError::Other(err.into()));
@@ -25,9 +25,19 @@ mod nodes {
         }
 
         let actual_image = mock_output.next();
-        match actual_image {
+        let image_result = match actual_image {
             Ok(dyn_img) => Ok(assert!(dyn_img.width() > 0)),
             Err(err) => Err(err),
+        };
+        if let Err(err) = image_result {
+            return Err(ReceiveError::Other(err.into()));
         }
+
+        let shutdown_result = webcam.on_shutdown();
+        if let Err(err) = shutdown_result {
+            return Err(ReceiveError::Other(err.into()));
+        }
+
+        Ok(())
     }
 }

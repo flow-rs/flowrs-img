@@ -1,19 +1,20 @@
 use flowrs::RuntimeConnectable;
 use flowrs::{
     connection::Output,
-    node::{Node, ChangeObserver, InitError, UpdateError},
+    node::{ChangeObserver, InitError, Node, ShutdownError, UpdateError},
 };
 
 use image::DynamicImage;
-use nokhwa::{
-    pixel_format::RgbFormat,
-    utils::{CameraIndex, RequestedFormat, RequestedFormatType},
-    Camera,
+use opencv::{
+    core::Mat,
+    imgproc::*,
+    prelude::*,
+    videoio::{VideoCapture, CAP_ANY},
 };
 
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode {
-    camera: Option<Camera>,
+    camera: Option<VideoCapture>,
     #[output]
     pub output: Output<DynamicImage>,
 }
@@ -29,54 +30,60 @@ impl WebcamNode {
 
 impl Node for WebcamNode {
     fn on_init(&mut self) -> Result<(), InitError> {
-        let index = CameraIndex::Index(0);
-        let requested =
-            RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
-        let new_camera = Camera::new(index, requested);
+        let camera = VideoCapture::new(0, CAP_ANY).map_err(|e| InitError::Other(e.into()))?;
+        let opened = VideoCapture::is_opened(&camera).map_err(|e| InitError::Other(e.into()))?;
 
-        let mut camera = match new_camera {
-            Ok(camera) => camera,
-            Err(err) => return Err(InitError::Other(err.into())),
-        };
-
-        let _ = camera.open_stream();
-        let test_frame = camera.frame();
-
-        if let Err(err) = test_frame {
-            return Err(InitError::Other(err.into()));
+        if !opened {
+            return Err(InitError::Other(anyhow::Error::msg(
+                "Camera could not be opened!",
+            )));
         }
 
         self.camera = Some(camera);
         Ok(())
     }
-    
+
     fn on_update(&mut self) -> Result<(), UpdateError> {
-        let no_cam_err = "No camera available";
+        if self.camera.is_none() {
+            return Err(UpdateError::Other(anyhow::Error::msg(
+                "There is no cam to update!",
+            )));
+        }
 
-        let cam = match self.camera {
-            Some(ref mut camera) => camera,
-            None => {
-                return Err(UpdateError::SendError {
-                    message: no_cam_err.to_string(),
-                })
-            }
-        };
+        let mut frame = Mat::default();
+        self.camera
+            .as_mut()
+            .unwrap()
+            .read(&mut frame)
+            .map_err(|e| UpdateError::Other(e.into()))?;
 
-        let frame_buffer = match cam.frame() {
-            Ok(frame) => frame,
-            Err(err) => return Err(UpdateError::Other(err.into())),
-        };
+        let mut rgb_mat = Mat::default();
+        cvt_color(&frame, &mut rgb_mat, COLOR_BGR2RGB, 0).unwrap();
+        let data = rgb_mat.data();
+        let width = rgb_mat.cols() as u32;
+        let height = rgb_mat.rows() as u32;
 
-        let decoded_frame = match frame_buffer.decode_image::<RgbFormat>() {
-            Ok(frame) => frame,
-            Err(err) => return Err(UpdateError::Other(err.into())),
-        };
+        // Convert raw pointer to a slice
+        let data_slice = unsafe { std::slice::from_raw_parts(data, (width * height * 3) as usize) };
 
-        let dyn_img = DynamicImage::ImageRgb8(decoded_frame);
+        // Create a Vec<u8> from the slice
+        let data_vec = data_slice.to_vec();
+
+        let dyn_img =
+            DynamicImage::ImageRgb8(image::RgbImage::from_raw(width, height, data_vec).unwrap());
 
         match self.output.clone().send(dyn_img) {
             Ok(_) => Ok(()),
             Err(err) => Err(UpdateError::Other(err.into())),
         }
+    }
+
+    fn on_shutdown(&mut self) -> anyhow::Result<(), flowrs::node::ShutdownError> {
+        self.camera
+            .as_mut()
+            .unwrap()
+            .release()
+            .map_err(|e| ShutdownError::Other(e.into()))?;
+        Ok(())
     }
 }

@@ -34,9 +34,13 @@ mod flow {
 
         println!("On udpate:");
 
+        let _ = node_webcam.on_init()?;
+
         let _ = node_webcam.on_update()?;
         let _ = node_to_array.on_update()?;
         let _ = node_debug.on_update()?;
+
+        let _ = node_webcam.on_shutdown()?;
 
         let _: Array3<f32> = mock_output.next()?.into();
 
