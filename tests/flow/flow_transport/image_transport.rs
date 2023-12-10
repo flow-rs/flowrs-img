@@ -13,6 +13,8 @@ mod flow {
     use ndarray::Array3;
     use serial_test::serial;
 
+    use crate::nodes::webcam;
+
     #[test]
     #[serial]
     fn transport_of_image_to_array() -> Result<(), anyhow::Error> {
@@ -20,7 +22,7 @@ mod flow {
 
         let change_observer: ChangeObserver = ChangeObserver::new();
 
-        let mut node_webcam = WebcamNode::new(Some(&change_observer));
+        let mut node_webcam = WebcamNode::<i32>::new(Some(&change_observer));
         let mut node_to_array = ImageToArray3Node::new(Some(&change_observer));
         let mut node_debug = DebugNode::new(Some(&change_observer));
 
@@ -35,6 +37,8 @@ mod flow {
         println!("On udpate:");
 
         let _ = node_webcam.on_init()?;
+
+        let _ = node_webcam.input.send(1);
 
         let _ = node_webcam.on_update()?;
         let _ = node_to_array.on_update()?;

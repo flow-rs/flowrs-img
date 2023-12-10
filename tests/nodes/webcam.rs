@@ -9,7 +9,7 @@ mod nodes {
     #[serial]
     fn should_return_some_frame() -> Result<(), ReceiveError> {
         let change_observer: ChangeObserver = ChangeObserver::new();
-        let mut webcam = WebcamNode::new(Some(&change_observer));
+        let mut webcam = WebcamNode::<i32>::new(Some(&change_observer));
 
         let mock_output = Edge::new();
         connect(webcam.output.clone(), mock_output.clone());
@@ -18,6 +18,8 @@ mod nodes {
         if let Err(err) = init_retsult {
             return Err(ReceiveError::Other(err.into()));
         }
+
+        let _ = webcam.input.send(1);
 
         let update_retsult = webcam.on_update();
         if let Err(err) = update_retsult {

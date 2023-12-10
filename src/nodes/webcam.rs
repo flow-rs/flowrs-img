@@ -1,6 +1,6 @@
 use flowrs::RuntimeConnectable;
 use flowrs::{
-    connection::Output,
+    connection::{Input, Output},
     node::{ChangeObserver, InitError, Node, ShutdownError, UpdateError},
 };
 
@@ -13,22 +13,36 @@ use opencv::{
 };
 
 #[derive(RuntimeConnectable)]
-pub struct WebcamNode {
+pub struct WebcamNode<T>
+where
+    T: Clone,
+{
     camera: Option<VideoCapture>,
+
     #[output]
     pub output: Output<DynamicImage>,
+    
+    #[input]
+    pub input: Input<T>,
 }
 
-impl WebcamNode {
+impl<T> WebcamNode<T>
+where
+    T: Clone,
+{
     pub fn new(change_observer: Option<&ChangeObserver>) -> Self {
         Self {
             camera: None,
             output: Output::new(change_observer),
+            input: Input::new(),
         }
     }
 }
 
-impl Node for WebcamNode {
+impl<T> Node for WebcamNode<T>
+where
+    T: Clone + Send,
+{
     fn on_init(&mut self) -> Result<(), InitError> {
         let camera = VideoCapture::new(0, CAP_ANY).map_err(|e| InitError::Other(e.into()))?;
         let opened = VideoCapture::is_opened(&camera).map_err(|e| InitError::Other(e.into()))?;
@@ -44,6 +58,10 @@ impl Node for WebcamNode {
     }
 
     fn on_update(&mut self) -> Result<(), UpdateError> {
+        if let Err(_) = self.input.next() {
+            return Ok(())
+        }
+        
         if self.camera.is_none() {
             return Err(UpdateError::Other(anyhow::Error::msg(
                 "There is no cam to update!",
