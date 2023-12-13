@@ -2,14 +2,15 @@
 mod nodes {
     use flowrs::connection::{connect, Edge};
     use flowrs::node::{ChangeObserver, Node, ReceiveError};
-    use flowrs_img::webcam::WebcamNode;
+    use flowrs_img::webcam::{WebcamNode, WebcamNodeConfig};
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn should_return_some_frame() -> Result<(), ReceiveError> {
         let change_observer: ChangeObserver = ChangeObserver::new();
-        let mut webcam = WebcamNode::<i32>::new(Some(&change_observer));
+        let webcam_config = WebcamNodeConfig { device_index: 0 };
+        let mut webcam = WebcamNode::<i32>::new(webcam_config, Some(&change_observer));
 
         let mock_output = Edge::new();
         connect(webcam.output.clone(), mock_output.clone());

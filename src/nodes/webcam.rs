@@ -11,6 +11,12 @@ use opencv::{
     prelude::*,
     videoio::{VideoCapture, CAP_ANY},
 };
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct WebcamNodeConfig {
+   pub device_index: i32
+}
 
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode<T>
@@ -18,6 +24,7 @@ where
     T: Clone,
 {
     camera: Option<VideoCapture>,
+    config: WebcamNodeConfig,
 
     #[output]
     pub output: Output<DynamicImage>,
@@ -30,11 +37,12 @@ impl<T> WebcamNode<T>
 where
     T: Clone,
 {
-    pub fn new(change_observer: Option<&ChangeObserver>) -> Self {
+    pub fn new(value: WebcamNodeConfig, change_observer: Option<&ChangeObserver>) -> Self {
         Self {
             camera: None,
             output: Output::new(change_observer),
             input: Input::new(),
+            config: value.clone()
         }
     }
 }
@@ -44,7 +52,7 @@ where
     T: Clone + Send,
 {
     fn on_init(&mut self) -> Result<(), InitError> {
-        let camera = VideoCapture::new(0, CAP_ANY).map_err(|e| InitError::Other(e.into()))?;
+        let camera = VideoCapture::new(self.config.device_index, CAP_ANY).map_err(|e| InitError::Other(e.into()))?;
         let opened = VideoCapture::is_opened(&camera).map_err(|e| InitError::Other(e.into()))?;
 
         if !opened {

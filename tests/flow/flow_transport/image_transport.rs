@@ -6,7 +6,7 @@ mod flow {
         node::{ChangeObserver, Node},
     };
     use flowrs_img::transform::ImageToArray3Node;
-    use flowrs_img::webcam::WebcamNode;
+    use flowrs_img::webcam::{WebcamNode, WebcamNodeConfig};
     use flowrs_std::binary::ToBinaryNode;
     use flowrs_std::debug::DebugNode;
     use image::DynamicImage;
@@ -22,7 +22,8 @@ mod flow {
 
         let change_observer: ChangeObserver = ChangeObserver::new();
 
-        let mut node_webcam = WebcamNode::<i32>::new(Some(&change_observer));
+        let webcam_config = WebcamNodeConfig { device_index: 0 };
+        let mut node_webcam = WebcamNode::<i32>::new(webcam_config, Some(&change_observer));
         let mut node_to_array = ImageToArray3Node::new(Some(&change_observer));
         let mut node_debug = DebugNode::new(Some(&change_observer));
 
