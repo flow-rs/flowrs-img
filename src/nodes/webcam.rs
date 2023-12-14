@@ -105,6 +105,11 @@ where
     }
 
     fn on_shutdown(&mut self) -> anyhow::Result<(), flowrs::node::ShutdownError> {
+        if self.camera.is_none() {
+            return Err(ShutdownError::Other(anyhow::Error::msg(
+                "There is no cam to shutdown!",
+            )));
+        }
         self.camera
             .as_mut()
             .unwrap()
