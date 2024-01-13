@@ -25,5 +25,6 @@ image = "0.24.7"
 ndarray = "0.15.6"
 nshare = "0.9.0"
 serial_test = "2.0.0"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 opencv = "0.88.1"
 

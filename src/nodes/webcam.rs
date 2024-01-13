@@ -6,6 +6,8 @@ use flowrs::{
 };
 
 use image::DynamicImage;
+
+#[cfg(not(target_arch = "wasm32"))]
 use opencv::{
     core::Mat,
     imgproc::*,
@@ -32,6 +34,7 @@ use serde::{Deserialize, Serialize};
 /// use flowrs_img::webcam::WebcamNodeConfig;
 /// let config = WebcamNodeConfig { device_index: 0 };
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WebcamNodeConfig {
    pub device_index: i32
@@ -78,6 +81,7 @@ pub struct WebcamNodeConfig {
 /// 
 /// let node: WebcamNode<i32> = WebcamNode::new(config, observer);
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(RuntimeConnectable)]
 pub struct WebcamNode<T>
 where
@@ -93,6 +97,7 @@ where
     pub input: Input<T>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<T> WebcamNode<T>
 where
     T: Clone,
@@ -139,6 +144,7 @@ where
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<T> Node for WebcamNode<T>
 where
     T: Clone + Send,
