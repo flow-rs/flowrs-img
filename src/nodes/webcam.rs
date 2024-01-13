@@ -276,7 +276,7 @@ where
         match cam.read(&mut frame) {
             Ok(true) => {},
             Ok(false) => return Err(UpdateError::Other(Error::msg(
-                "Coud not read a new frame"
+                "Could not read a new frame"
             ))),
             Err(e) => return Err(UpdateError::Other(e.into())),
         };
