@@ -1,3 +1,4 @@
+use anyhow::Error;
 use flowrs::RuntimeConnectable;
 use flowrs::{
     connection::{Input, Output},
@@ -56,7 +57,7 @@ where
         let opened = VideoCapture::is_opened(&camera).map_err(|e| InitError::Other(e.into()))?;
 
         if !opened {
-            return Err(InitError::Other(anyhow::Error::msg(
+            return Err(InitError::Other(Error::msg(
                 "Camera could not be opened!",
             )));
         }
@@ -70,18 +71,21 @@ where
             return Ok(())
         }
         
-        if self.camera.is_none() {
-            return Err(UpdateError::Other(anyhow::Error::msg(
+        let cam = match self.camera.as_mut() {
+            None => return Err(UpdateError::Other(Error::msg(
                 "There is no cam to update!",
-            )));
-        }
+            ))),
+            Some(cam) => cam
+        };
 
         let mut frame = Mat::default();
-        self.camera
-            .as_mut()
-            .unwrap()
-            .read(&mut frame)
-            .map_err(|e| UpdateError::Other(e.into()))?;
+        match cam.read(&mut frame) {
+            Ok(true) => {},
+            Ok(false) => return Err(UpdateError::Other(Error::msg(
+                "Coud not read a new frame"
+            ))),
+            Err(e) => return Err(UpdateError::Other(e.into())),
+        };
 
         let mut rgb_mat = Mat::default();
         cvt_color(&frame, &mut rgb_mat, COLOR_BGR2RGB, 0).unwrap();
@@ -104,17 +108,15 @@ where
         }
     }
 
-    fn on_shutdown(&mut self) -> anyhow::Result<(), flowrs::node::ShutdownError> {
-        if self.camera.is_none() {
-            return Err(ShutdownError::Other(anyhow::Error::msg(
+    fn on_shutdown(&mut self) -> Result<(), flowrs::node::ShutdownError> {
+        match self.camera.as_mut() {
+            None => Err(ShutdownError::Other(Error::msg(
                 "There is no cam to shutdown!",
-            )));
+            ))),
+            Some(cam) => {
+                cam.release().map_err(|e| ShutdownError::Other(e.into()))?;
+                Ok(())
+            },
         }
-        self.camera
-            .as_mut()
-            .unwrap()
-            .release()
-            .map_err(|e| ShutdownError::Other(e.into()))?;
-        Ok(())
     }
 }
