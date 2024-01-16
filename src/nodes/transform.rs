@@ -1,12 +1,14 @@
-use flowrs::{node::{Node, UpdateError, ChangeObserver}, connection::{Input, Output}};
 use flowrs::RuntimeConnectable;
+use flowrs::{
+    connection::{Input, Output},
+    node::{ChangeObserver, Node, UpdateError},
+};
 
-use std::io::Cursor;
-use image::{DynamicImage, io::Reader as ImageReader, ImageBuffer, Pixel};
-use ndarray::{Array3, ArrayBase, OwnedRepr, Dim};
+use anyhow::anyhow;
+use image::{io::Reader as ImageReader, DynamicImage, ImageBuffer, Pixel};
+use ndarray::{Array3, ArrayBase, Dim, OwnedRepr};
 use nshare::ToNdarray3;
-use anyhow::{anyhow};
-
+use std::io::Cursor;
 
 use serde::{Deserialize, Serialize};
 
@@ -25,29 +27,30 @@ impl DecodeImageNode {
     pub fn new(change_observer: Option<&ChangeObserver>) -> Self {
         Self {
             output: Output::new(change_observer),
-            input: Input::new()
+            input: Input::new(),
         }
     }
 }
 
 impl Node for DecodeImageNode {
     fn on_update(&mut self) -> Result<(), UpdateError> {
-
         if let Ok(data) = self.input.next() {
-
             let img = ImageReader::new(Cursor::new(data))
-            .with_guessed_format().map_err(|e| UpdateError::Other(e.into()))?
-            .decode().map_err(|e| UpdateError::Other(e.into()))?;
+                .with_guessed_format()
+                .map_err(|e| UpdateError::Other(e.into()))?
+                .decode()
+                .map_err(|e| UpdateError::Other(e.into()))?;
 
-            self.output.send(img).map_err(|e| UpdateError::Other(e.into()))?;
+            self.output
+                .send(img)
+                .map_err(|e| UpdateError::Other(e.into()))?;
         }
         Ok(())
     }
 }
 
-// TODO:    - EncodeImageNode, Array3ToImage, 
+// TODO:    - EncodeImageNode, Array3ToImage,
 //          - How to replace DynamicImage with something like ImageBuffer<P, Vec<<P as Pixel>::Subpixel>>
-
 
 #[derive(RuntimeConnectable, Deserialize, Serialize)]
 pub struct ImageToArray3Node<T> {
@@ -59,34 +62,40 @@ pub struct ImageToArray3Node<T> {
 }
 
 impl<T> ImageToArray3Node<T>
-where T: Send + Sync {
+where
+    T: Send + Sync,
+{
     pub fn new(change_observer: Option<&ChangeObserver>) -> Self {
         Self {
             output: Output::new(change_observer),
-            input: Input::new()
+            input: Input::new(),
         }
     }
 
-    fn handle_image<U: Pixel + 'static>(&mut self, img: ImageBuffer<U, Vec<U::Subpixel>>) -> Result<(), UpdateError>
+    fn handle_image<U: Pixel + 'static>(
+        &mut self,
+        img: ImageBuffer<U, Vec<U::Subpixel>>,
+    ) -> Result<(), UpdateError>
     where
         T: From<U::Subpixel>,
     {
-        let a: ArrayBase<OwnedRepr<T>, Dim<[usize; 3]>> 
-            = img.into_ndarray3().mapv(|x| x.into());
-        
-        self.output.send(a).map_err(|e| UpdateError::Other(e.into()))?;
+        let a: ArrayBase<OwnedRepr<T>, Dim<[usize; 3]>> = img.into_ndarray3().mapv(|x| x.into());
+
+        self.output
+            .send(a)
+            .map_err(|e| UpdateError::Other(e.into()))?;
         Ok(())
     }
 }
 
-impl<T> Node for ImageToArray3Node<T> 
-where T: Send + Sync + From<u8> + From<u16> + From<f32> {
+impl<T> Node for ImageToArray3Node<T>
+where
+    T: Send + Sync + From<u8> + From<u16> + From<f32>,
+{
     fn on_update(&mut self) -> Result<(), UpdateError> {
-
         if let Ok(data) = self.input.next() {
-
             match data {
-                DynamicImage::ImageLuma8(img) => self.handle_image(img),    
+                DynamicImage::ImageLuma8(img) => self.handle_image(img),
                 DynamicImage::ImageLumaA8(img) => self.handle_image(img),
                 DynamicImage::ImageRgb8(img) => self.handle_image(img),
                 DynamicImage::ImageRgba8(img) => self.handle_image(img),
@@ -96,7 +105,7 @@ where T: Send + Sync + From<u8> + From<u16> + From<f32> {
                 DynamicImage::ImageRgba16(img) => self.handle_image(img),
                 DynamicImage::ImageRgb32F(img) => self.handle_image(img),
                 DynamicImage::ImageRgba32F(img) => self.handle_image(img),
-                _ => Err(UpdateError::Other(anyhow!("Image type not supported.")))
+                _ => Err(UpdateError::Other(anyhow!("Image type not supported."))),
             }?
         }
         Ok(())
