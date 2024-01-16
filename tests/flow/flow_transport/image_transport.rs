@@ -23,7 +23,11 @@ mod flow {
 
         let change_observer: ChangeObserver = ChangeObserver::new();
 
-        let webcam_config = WebcamNodeConfig { device_index: 0 };
+        let webcam_config = WebcamNodeConfig {
+            device_index: 0,
+            frame_width: 640,
+            frame_height: 480,
+        };
         let mut node_webcam = WebcamNode::<i32>::new(webcam_config, Some(&change_observer));
         let mut node_to_array = ImageToArray3Node::new(Some(&change_observer));
         let mut node_debug = DebugNode::new(Some(&change_observer));

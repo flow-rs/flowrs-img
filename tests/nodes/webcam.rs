@@ -9,7 +9,11 @@ mod nodes {
     #[serial]
     fn should_return_some_frame() -> Result<(), ReceiveError> {
         let change_observer: ChangeObserver = ChangeObserver::new();
-        let webcam_config = WebcamNodeConfig { device_index: 0 };
+        let webcam_config = WebcamNodeConfig {
+            device_index: 0,
+            frame_width: 640,
+            frame_height: 480,
+        };
         let mut webcam = WebcamNode::<i32>::new(webcam_config, Some(&change_observer));
 
         let mock_output = Edge::new();
