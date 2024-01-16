@@ -12,32 +12,36 @@ use opencv::{
     core::Mat,
     imgproc::*,
     prelude::*,
-    videoio::{VideoCapture, CAP_ANY},
+    videoio::{VideoCapture, CAP_ANY, CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH},
 };
 use serde::{Deserialize, Serialize};
 
 /// This struct is cloneable, can be serialized and deserialized, and
-/// contains a device index.
-/// 
-/// # Attributes
-/// 
-/// * `device_index` - An i32 that indicates the index of the device.
+/// contains configurations for the camera.
 ///
-/// # Remarks 
-/// 
-/// This is derived from both `Serialize` and `Deserialize` to allow 
+/// # Attributes
+///
+/// * `device_index` - An i32 that indicates the index of the device.
+/// * `frame_width` - An u32 that indicates the captured frame width.
+/// * `frame_height` - An u32 that indicates the captured frame height.
+///
+/// # Remarks
+///
+/// This is derived from both `Serialize` and `Deserialize` to allow
 /// transformation to/from String format
 ///
-/// # Examples 
-/// 
-/// ``` 
+/// # Examples
+///
+/// ```
 /// use flowrs_img::webcam::WebcamNodeConfig;
 /// let config = WebcamNodeConfig { device_index: 0 };
 /// ```
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WebcamNodeConfig {
-   pub device_index: i32
+    pub device_index: i32,
+    pub frame_width: u32,
+    pub frame_height: u32,
 }
 
 /// `WebcamNode<T>` struct defines configuration for webcam node with generic
@@ -50,12 +54,12 @@ pub struct WebcamNodeConfig {
 /// An image is only returned if an item is in the input
 ///
 /// # Derivation
-/// 
-/// This struct derives `RuntimeConnectable` trait for dynamic input and output 
+///
+/// This struct derives `RuntimeConnectable` trait for dynamic input and output
 /// connections at runtime.
 ///
 /// # Type Parameters
-/// 
+///
 /// * `T` - Clone trait bound. This enables WebcamNode to hold any data
 ///         type that implements the Clone trait.
 ///
@@ -63,22 +67,22 @@ pub struct WebcamNodeConfig {
 ///
 /// * `camera` - Optional `VideoCapture` object represents the camera device.
 /// * `config` - A `WebcamNodeConfig` object used for configuring the webcam node.
-/// * `output` - The output attribute `Output<DynamicImage>`, expected to be a node output 
+/// * `output` - The output attribute `Output<DynamicImage>`, expected to be a node output
 ///              end points capable of transferring `DynamicImage` data type.
-/// * `input`  - The input attribute `Input<T>`, expected to be a node input end points 
+/// * `input`  - The input attribute `Input<T>`, expected to be a node input end points
 ///              capable of accepting `T` data type.
 ///
 /// # Examples
-/// 
+///
 /// ```
 /// use flowrs::node::ChangeObserver;
 /// use flowrs_img::webcam::WebcamNodeConfig;
 /// use flowrs_img::webcam::WebcamNode;
-/// 
+///
 /// let config = WebcamNodeConfig { device_index: 0 };
 /// let co = ChangeObserver::new();
 /// let observer = Some(&co);
-/// 
+///
 /// let node: WebcamNode<i32> = WebcamNode::new(config, observer);
 /// ```
 #[cfg(not(target_arch = "wasm32"))]
@@ -92,7 +96,7 @@ where
 
     #[output]
     pub output: Output<DynamicImage>,
-    
+
     #[input]
     pub input: Input<T>,
 }
@@ -110,25 +114,25 @@ where
     /// The ChangeObserver is used for receiving tokens in the input.
     ///
     /// # Parameters
-    /// 
+    ///
     /// * `value` - A WebcamNodeConfig object taken ownership by the function.
-    /// * `change_observer` - An Optional reference to a ChangeObserver. 
+    /// * `change_observer` - An Optional reference to a ChangeObserver.
     ///
     /// # Return
-    /// 
+    ///
     /// It returns a `WebcamNode` instance with the following attributes initialized:
     /// * `camera`: This is None initially because the camera hasn't started yet.
     /// * `output`: This is a new output node which references the ChangeObserver if it is provided.
-    /// * `input`: A new uninitialized `Input` instance. 
-    /// * `config`: Cloning of the passed `value` parameter. 
+    /// * `input`: A new uninitialized `Input` instance.
+    /// * `config`: Cloning of the passed `value` parameter.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use flowrs::node::ChangeObserver;
     /// use flowrs_img::webcam::WebcamNodeConfig;
     /// use flowrs_img::webcam::WebcamNode;
-    /// 
+    ///
     /// let config = WebcamNodeConfig { device_index: 0 };
     /// let co = ChangeObserver::new();
     /// let observer = Some(&co);
@@ -139,7 +143,7 @@ where
             camera: None,
             output: Output::new(change_observer),
             input: Input::new(),
-            config: value.clone()
+            config: value.clone(),
         }
     }
 }
@@ -153,97 +157,102 @@ where
     /// instance that represents a webcam device with the specified index in `self.config.device_index`, and
     /// verify if the webcam device is successfully opened. The function may fail if unable to create the
     /// `VideoCapture` instance or the webcam device can't be opened, which results in an `InitError`.
-    /// 
+    ///
     /// If the function executes successfully, the `self.camera` field of the `WebcamNode` is assigned the
     /// `VideoCapture` instance.
-    /// 
+    ///
     /// # Parameters
-    /// 
+    ///
     /// No input parameters.
-    /// 
+    ///
     /// # Return
-    /// 
+    ///
     /// * `Ok(())`: Successfully initialized the object and the camera is opened properly.
     /// * `Err(InitError::Other(e))`: An error occurred during initialization. It can be due to:
     ///    * The camera could not be opened.
     ///    * Any other issues while initializing the VideoCapture object or checking its status.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// The function can produce an error of type `InitError` due to either of these scenarios:
     /// * VideoCapture initialization fails.
     /// * The camera represented by VideoCapture instance isn't opened successfully.
-    /// 
+    ///
     /// In the case of these errors, an `InitError::Other` is returned with a detailed description of the issue wrapped in an `Error`.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This function does not explicitly panic.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use flowrs::node::ChangeObserver;
     /// use flowrs::node::Node;
     /// use flowrs_img::webcam::WebcamNodeConfig;
     /// use flowrs_img::webcam::WebcamNode;
-    /// 
-    /// let config = WebcamNodeConfig { device_index: 0 };
+    ///
+    /// let config = WebcamNodeConfig { device_index: 0, frame_width:640, frame_height:480 };
     /// let co = ChangeObserver::new();
     /// let observer = Some(&co);
     /// let mut node: WebcamNode<i32> = WebcamNode::new(config, observer);
-    /// 
+    ///
     /// match node.on_init() {
     ///     Ok(_) => println!("WebcamNode has been successfully initialized"),
     ///     Err(e) => println!("An error occurred when trying to initialize the WebcamNode: {}", e),
     /// }
     /// ```
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This function doesn't have any specific safety considerations as it doesn't involve `unsafe` operations.
-    /// 
+    ///
     /// Please note that you need to make sure the webcam device specified by the index in `self.config.device_index` is available and can be opened.
     fn on_init(&mut self) -> Result<(), InitError> {
-        let camera = VideoCapture::new(self.config.device_index, CAP_ANY).map_err(|e| InitError::Other(e.into()))?;
+        let mut camera = VideoCapture::new(self.config.device_index, CAP_ANY)
+            .map_err(|e| InitError::Other(e.into()))?;
         let opened = VideoCapture::is_opened(&camera).map_err(|e| InitError::Other(e.into()))?;
 
         if !opened {
-            return Err(InitError::Other(Error::msg(
-                "Camera could not be opened!",
-            )));
+            return Err(InitError::Other(Error::msg("Camera could not be opened!")));
         }
 
+        camera
+            .set(CAP_PROP_FRAME_WIDTH, self.config.frame_width as f64)
+            .map_err(|e| InitError::Other(e.into()))?;
+        camera
+            .set(CAP_PROP_FRAME_HEIGHT, self.config.frame_height as f64)
+            .map_err(|e| InitError::Other(e.into()))?;
         self.camera = Some(camera);
         Ok(())
     }
 
     /// `on_update` checks for new inputs and updates the camera frame accordingly.
     /// Then it converts the new frame into RGB format and sends this processed image
-    /// output as a `DynamicImage`. 
+    /// output as a `DynamicImage`.
     ///
     /// # Errors
-    /// 
+    ///
     /// * `Err(UpdateError::Other(Error::msg("There is no cam to update!")))` is returned when the camera is not available or not set up correctly.
     /// * `Err(UpdateError::Other(Error::msg("Could not read a new frame")))` is returned when the camera fails to read a new frame.
     /// * `Err(UpdateError::Other(err.into()))` is returned when the output fails to send updated frame.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// The method uses an `unsafe` block to convert a raw pointer to a slice. The safety
     /// of this operation is guaranteed by the fact that correct size is used when slicing from raw parts,
     /// which is `(width * height * 3)`, and it is ensured that the slice will not outlive the data it points to.
     /// However, ensure careful use of this method, as it involves `unsafe` operations.
     ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use flowrs::node::Node;
     /// use flowrs::node::ChangeObserver;
     /// use flowrs_img::webcam::WebcamNodeConfig;
     /// use flowrs_img::webcam::WebcamNode;
-    /// 
-    /// let config = WebcamNodeConfig { device_index: 0 };
+    ///
+    /// let config = WebcamNodeConfig { device_index: 0, frame_width: 640, frame_height: 480 };
     /// let co = ChangeObserver::new();
     /// let observer = Some(&co);
     /// let mut node: WebcamNode<i32> = WebcamNode::new(config, observer);
@@ -251,33 +260,29 @@ where
     ///     Ok(_) => println!("WebcamNode has been successfully initialized"),
     ///     Err(e) => println!("An error occurred when trying to initialize the WebcamNode: {}", e),
     /// }
-    /// 
+    ///
     /// //send someting into the input
     /// match node.on_update() {
     ///     Ok(_) => println!("WebcamNode has been successfully updated"),
     ///     Err(e) => println!("An error occurred when trying to update the WebcamNode: {}", e),
     /// }
     /// ```
-    /// 
+    ///
     /// Before calling `on_update`, ensure that a valid camera and other necessary fields are properly initialized.
     fn on_update(&mut self) -> Result<(), UpdateError> {
         if let Err(_) = self.input.next() {
-            return Ok(())
+            return Ok(());
         }
-        
+
         let cam = match self.camera.as_mut() {
-            None => return Err(UpdateError::Other(Error::msg(
-                "There is no cam to update!",
-            ))),
-            Some(cam) => cam
+            None => return Err(UpdateError::Other(Error::msg("There is no cam to update!"))),
+            Some(cam) => cam,
         };
 
         let mut frame = Mat::default();
         match cam.read(&mut frame) {
-            Ok(true) => {},
-            Ok(false) => return Err(UpdateError::Other(Error::msg(
-                "Could not read a new frame"
-            ))),
+            Ok(true) => {}
+            Ok(false) => return Err(UpdateError::Other(Error::msg("Could not read a new frame"))),
             Err(e) => return Err(UpdateError::Other(e.into())),
         };
 
@@ -316,18 +321,18 @@ where
     /// the shutdown process encounters an error.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use flowrs::node::Node;
     /// use flowrs::node::ChangeObserver;
     /// use flowrs_img::webcam::WebcamNodeConfig;
     /// use flowrs_img::webcam::WebcamNode;
-    /// 
-    /// let config = WebcamNodeConfig { device_index: 0 };
+    ///
+    /// let config = WebcamNodeConfig { device_index: 0, frame_width: 640, frame_height: 480 };
     /// let co = ChangeObserver::new();
     /// let observer = Some(&co);
     /// let mut node: WebcamNode<i32> = WebcamNode::new(config, observer);
-    /// 
+    ///
     /// match node.on_shutdown() {
     ///     Ok(_) => println!("WebcamNode has been successfully shut down"),
     ///     Err(e) => println!("An error occurred when trying to shut down the WebcamNode: {}", e),
@@ -341,7 +346,7 @@ where
             Some(cam) => {
                 cam.release().map_err(|e| ShutdownError::Other(e.into()))?;
                 Ok(())
-            },
+            }
         }
     }
 }
